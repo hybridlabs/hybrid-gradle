@@ -1,0 +1,48 @@
+// The Fabric project. Data generation stays in the project's own script, since Loom only allows
+// configuring it once.
+plugins {
+    id 'dev.hybridlabs.loader'
+    id 'fabric-loom'
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    mappings loom.layered {
+        officialMojangMappings()
+        parchment("org.parchmentmc.data:parchment-${findProperty('parchment_minecraft') ?: minecraft_version}:${parchment_version}@zip")
+    }
+
+    modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+    compileOnly 'org.jetbrains:annotations:25.0.0'
+}
+
+pluginManager.withPlugin('org.jetbrains.kotlin.jvm') {
+    dependencies {
+        modImplementation "net.fabricmc:fabric-language-kotlin:${fabric_kotlin_version}+kotlin.${kotlin_version}"
+    }
+}
+
+loom {
+    def accessWidener = file("src/main/resources/${mod_id}.accesswidener")
+    if (accessWidener.exists()) {
+        accessWidenerPath = accessWidener
+    }
+
+    runs {
+        client {
+            configName = 'Fabric Client'
+        }
+        server {
+            configName = 'Fabric Server'
+        }
+        configureEach {
+            // Loom only generates run configurations for the root project by default.
+            ideConfigGenerated(true)
+        }
+    }
+}
+
+publishMods {
+    file = tasks.named('remapJar').flatMap { it.archiveFile }
+}

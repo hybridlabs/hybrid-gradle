@@ -1,0 +1,14 @@
+// Entry point, applied in settings.gradle. Loading the plugins here puts Loom and ModDevGradle on
+// one classpath shared by every project, and lets projects apply the conventions without a version.
+plugins {
+    // Downloads the JDK java_version asks for if it is not installed.
+    id 'org.gradle.toolchains.foojay-resolver-convention'
+}
+
+// Kotlin is applied without a version and takes kotlin_version from gradle.properties, since
+// fabric-language-kotlin and Kotlin for Forge each ship a specific Kotlin.
+pluginManagement.resolutionStrategy.eachPlugin {
+    if (requested.id.id == 'org.jetbrains.kotlin.jvm' && requested.version == null) {
+        useVersion(providers.gradleProperty('kotlin_version').get())
+    }
+}

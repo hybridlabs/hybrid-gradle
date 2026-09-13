@@ -1,0 +1,28 @@
+// The NeoForge project, for 1.21.
+plugins {
+    id 'dev.hybridlabs.loader'
+    id 'net.neoforged.moddev'
+    id 'dev.hybridlabs.moddev'
+}
+
+neoForge {
+    version = neoforge_version
+
+    runs.configureEach {
+        systemProperty('neoforge.enabledGameTestNamespaces', mod_id)
+    }
+}
+
+dependencies {
+    compileOnly 'org.jetbrains:annotations:25.0.0'
+}
+
+pluginManager.withPlugin('org.jetbrains.kotlin.jvm') {
+    dependencies {
+        implementation "thedarkcolour:kotlinforforge-neoforge:${kotlin_for_forge_version}"
+    }
+}
+
+publishMods {
+    file = tasks.named('jar', Jar).flatMap { it.archiveFile }
+}

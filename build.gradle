@@ -1,0 +1,39 @@
+plugins {
+    id 'groovy-gradle-plugin'
+    id 'maven-publish'
+}
+
+java {
+    // Loom needs Gradle to run on Java 21, so there is no point targeting anything older.
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+repositories {
+    gradlePluginPortal()
+    maven {
+        name = 'Fabric'
+        url = 'https://maven.fabricmc.net/'
+    }
+}
+
+// The plugins the conventions apply. Bumping one here and releasing updates every mod.
+dependencies {
+    implementation 'net.fabricmc:fabric-loom:1.17.20'
+    implementation 'net.neoforged:moddev-gradle:2.0.147'
+    implementation 'me.modmuss50:mod-publish-plugin:2.2.0'
+    implementation 'org.gradle.toolchains:foojay-resolver:1.0.0'
+}
+
+publishing {
+    repositories {
+        maven {
+            name = 'HybridLabs'
+            url = 'https://maven.dvitski.cc/releases'
+            credentials {
+                username = findProperty('hybridlabsMavenUser') ?: System.getenv('HYBRIDLABS_MAVEN_USER')
+                password = findProperty('hybridlabsMavenPassword') ?: System.getenv('HYBRIDLABS_MAVEN_PASSWORD')
+            }
+        }
+    }
+}

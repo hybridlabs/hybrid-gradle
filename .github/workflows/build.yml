@@ -1,0 +1,29 @@
+# Builds and validates the plugins on every push and pull request.
+name: build
+on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v7
+
+      - name: set up jdk
+        uses: actions/setup-java@v6
+        with:
+          java-version: 21
+          distribution: temurin
+
+      - name: set up gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: build
+        run: ./gradlew build "-Dorg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64"

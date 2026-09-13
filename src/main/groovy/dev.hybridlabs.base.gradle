@@ -1,0 +1,154 @@
+// Shared by every project: Java, repositories, jar contents, metadata expansion and Maven publishing.
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+base {
+    archivesName = "${mod_id}-${project.name}-${minecraft_version}"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(java_version)
+    withSourcesJar()
+}
+
+// Loom's remapped mods live in a local repository it adds last. Keep every other repository from
+// being asked for them, since a 5xx from any of them fails resolution instead of falling through.
+repositories.configureEach { repo ->
+    if (!repo.name.startsWith('Loom')) {
+        repo.content { excludeGroupByRegex('remapped\\..*') }
+    }
+}
+
+// A repository that is only asked for the groups it hosts.
+def exclusiveMaven = { String repoName, String repoUrl, List<String> groups ->
+    repositories.exclusiveContent {
+        forRepository {
+            repositories.maven {
+                name = repoName
+                url = repoUrl
+            }
+        }
+        filter {
+            groups.each { includeGroupAndSubgroups(it) }
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+exclusiveMaven('Sponge', 'https://repo.spongepowered.org/repository/maven-public', ['org.spongepowered'])
+exclusiveMaven('ParchmentMC', 'https://maven.parchmentmc.org/', ['org.parchmentmc.data'])
+exclusiveMaven('Modrinth', 'https://api.modrinth.com/maven', ['maven.modrinth'])
+exclusiveMaven('Hybrid Labs', 'https://maven.dvitski.cc/releases', ['dev.hybridlabs'])
+exclusiveMaven('Kotlin for Forge', 'https://thedarkcolour.github.io/KotlinForForge/', ['thedarkcolour'])
+exclusiveMaven('GeckoLib', 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/', ['software.bernie.geckolib', 'com.eliotlash'])
+exclusiveMaven('TerraformersMC', 'https://maven.terraformersmc.com/releases/', ['com.terraformersmc', 'dev.emi'])
+exclusiveMaven('Ladysnake', 'https://maven.ladysnake.org/releases', ['org.ladysnake', 'dev.onyxstudios'])
+exclusiveMaven('JamiesWhiteShirt', 'https://maven.jamieswhiteshirt.com/libs-release/', ['com.jamieswhiteshirt'])
+exclusiveMaven('Illusive Soulworks', 'https://maven.theillusivec4.top/', ['top.theillusivec4'])
+exclusiveMaven('Debug Utils', 'https://gitlab.com/api/v4/projects/21830712/packages/maven/', ['io.github.flemmli97'])
+
+repositories {
+    maven {
+        name = 'NeoForged'
+        url = 'https://maven.neoforged.net/releases'
+    }
+    maven {
+        name = 'Fabric'
+        url = 'https://maven.fabricmc.net/'
+    }
+    maven {
+        name = 'Minecraft Forge'
+        url = 'https://maven.minecraftforge.net/'
+    }
+    maven {
+        name = 'BlameJared'
+        url = 'https://maven.blamejared.com'
+    }
+}
+
+// Lets a loader depend on common by the mod id, whatever the archive is called.
+// https://docs.gradle.org/current/userguide/component_capabilities.html#sec:declaring-additional-capabilities-for-a-local-component
+['apiElements', 'runtimeElements', 'sourcesElements'].each { variant ->
+    configurations."$variant".outgoing {
+        capability("$group:${project.name}:$version")
+        capability("$group:${base.archivesName.get()}:$version")
+        capability("$group:$mod_id:$version")
+    }
+    publishing.publications.configureEach {
+        suppressPomMetadataWarningsFor(variant)
+    }
+}
+
+tasks.named('sourcesJar', Jar) {
+    from(rootProject.file('LICENSE')) {
+        rename { "${it}_${mod_name}" }
+    }
+}
+
+tasks.named('jar', Jar) {
+    from(rootProject.file('LICENSE')) {
+        rename { "${it}_${mod_name}" }
+    }
+
+    manifest {
+        attributes([
+                'Specification-Title'   : mod_name,
+                'Specification-Vendor'  : mod_author,
+                'Specification-Version' : archiveVersion,
+                'Implementation-Title'  : project.name,
+                'Implementation-Version': archiveVersion,
+                'Implementation-Vendor' : mod_author,
+                'Built-On-Minecraft'    : minecraft_version
+        ])
+    }
+}
+
+tasks.named('processResources', ProcessResources) {
+    // Every gradle.properties key can be used as a placeholder in the metadata files.
+    var expandProps = new Properties()
+    rootProject.file('gradle.properties').withInputStream { expandProps.load(it) }
+    expandProps.keySet().removeIf { it.toString().startsWith('org.gradle.') }
+    expandProps.putAll([
+            'version'    : version,
+            'group'      : project.group, // Else we target the task's group.
+            'description': project.description,
+    ])
+
+    var jsonExpandProps = expandProps.collectEntries { key, value ->
+        [(key): value instanceof String ? value.replace('\n', '\\\\n') : value]
+    }
+
+    filesMatching(['META-INF/mods.toml', 'META-INF/neoforge.mods.toml']) {
+        expand expandProps
+    }
+
+    filesMatching(['pack.mcmeta', 'fabric.mod.json', '*.mixins.json']) {
+        expand jsonExpandProps
+    }
+
+    inputs.properties(expandProps)
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            artifactId = base.archivesName.get()
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            name = 'HybridLabs'
+            url = 'https://maven.dvitski.cc/releases'
+            credentials {
+                username = findProperty('hybridlabsMavenUser') ?: System.getenv('HYBRIDLABS_MAVEN_USER')
+                password = findProperty('hybridlabsMavenPassword') ?: System.getenv('HYBRIDLABS_MAVEN_PASSWORD')
+            }
+        }
+    }
+}

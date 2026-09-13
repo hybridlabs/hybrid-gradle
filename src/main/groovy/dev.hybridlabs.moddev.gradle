@@ -1,0 +1,50 @@
+// Shared by the projects built with ModDevGradle (common, forge and neoforge). Applied after it.
+def neo = extensions.findByName('neoForge') != null
+def modDev = extensions.getByName(neo ? 'neoForge' : 'legacyForge')
+
+modDev.parchment {
+    minecraftVersion = findProperty('parchment_minecraft') ?: minecraft_version
+    mappingsVersion = parchment_version
+}
+
+def accessTransformer = rootProject.file('common/src/main/resources/META-INF/accesstransformer.cfg')
+if (accessTransformer.exists()) {
+    modDev.accessTransformers.from(accessTransformer)
+}
+
+if (!pluginManager.hasPlugin('dev.hybridlabs.loader')) {
+    return
+}
+
+modDev.runs {
+    client {
+        client()
+    }
+    server {
+        server()
+    }
+    data {
+        data()
+        programArguments.addAll '--mod', mod_id, '--all',
+                '--output', file('src/generated/resources').absolutePath,
+                '--existing', file('src/main/resources').absolutePath,
+                '--existing', rootProject.file('common/src/main/resources').absolutePath,
+                '--existing', rootProject.file('fabric/src/generated/resources').absolutePath
+    }
+    configureEach {
+        // Named like the Fabric runs, e.g. "NeoForge Client".
+        ideName = "${neo ? 'NeoForge' : 'Forge'} ${name.capitalize()} (${project.path})"
+    }
+}
+
+modDev.mods {
+    "${mod_id}" {
+        sourceSet sourceSets.main
+    }
+}
+
+// Datagen output: this loader's own, plus Fabric's, which is shared by every loader.
+sourceSets.main.resources.srcDir('src/generated/resources')
+tasks.named('processResources', ProcessResources) {
+    from(rootProject.file('fabric/src/generated/resources'))
+}

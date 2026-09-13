@@ -1,0 +1,87 @@
+// Shared by the loader projects: compile common into this jar, and publish it.
+import java.util.regex.Pattern
+
+plugins {
+    id 'dev.hybridlabs.base'
+    id 'me.modmuss50.mod-publish-plugin'
+}
+
+configurations {
+    commonJava {
+        canBeConsumed = false
+    }
+    commonKotlin {
+        canBeConsumed = false
+    }
+    commonResources {
+        canBeConsumed = false
+    }
+}
+
+dependencies {
+    compileOnly(project(':common')) {
+        capabilities {
+            requireCapability "$group:$mod_id"
+        }
+    }
+    commonJava project(path: ':common', configuration: 'commonJava')
+    commonKotlin project(path: ':common', configuration: 'commonKotlin')
+    commonResources project(path: ':common', configuration: 'commonResources')
+}
+
+tasks.named('compileJava', JavaCompile) {
+    source(configurations.commonJava)
+}
+
+// Kotlin is applied by the project itself. It needs common's Java too, which it may reference.
+pluginManager.withPlugin('org.jetbrains.kotlin.jvm') {
+    tasks.named('compileKotlin') {
+        source(configurations.commonJava, configurations.commonKotlin)
+    }
+}
+
+tasks.named('processResources', ProcessResources) {
+    from(configurations.commonResources)
+}
+
+tasks.named('sourcesJar', Jar) {
+    from(configurations.commonJava, configurations.commonKotlin, configurations.commonResources)
+}
+
+// This version's section of CHANGELOG.md. Publishing fails without one, so every release has notes.
+def releaseNotes = provider {
+    def changelog = rootProject.file('CHANGELOG.md').text
+    def section = changelog =~ /(?ms)^## \[${Pattern.quote(version.toString())}\][^\n]*\n(.*?)(?=^## |\z)/
+    def notes = section.find() ? section.group(1).trim() : ''
+    if (notes.isEmpty()) {
+        throw new GradleException("CHANGELOG.md has no notes for $version, add a '## [$version]' section before publishing")
+    }
+    notes
+}
+
+// `./gradlew publishMods`, or `-PdryRun` to rehearse. Tokens come from ~/.gradle/gradle.properties or
+// the environment. Each loader lists its dependencies in `publishMods.platforms.configureEach`.
+publishMods {
+    changelog = releaseNotes
+    type = STABLE
+    version = "mc${minecraft_version}-${project.version}-${project.name}"
+    displayName = "[${minecraft_version}-${project.name.capitalize()}] ${mod_name} ${project.version}"
+    modLoaders.add(project.name)
+    dryRun = providers.gradleProperty('dryRun').isPresent()
+
+    modrinth {
+        projectId = providers.gradleProperty('modrinth_id')
+        accessToken = providers.gradleProperty('modrinthToken').orElse(providers.environmentVariable('MODRINTH_TOKEN'))
+        minecraftVersions.add(minecraft_version)
+        environment = CLIENT_AND_SERVER
+    }
+
+    curseforge {
+        projectId = providers.gradleProperty('curseforge_id')
+        accessToken = providers.gradleProperty('curseforgeToken').orElse(providers.environmentVariable('CURSEFORGE_TOKEN'))
+        minecraftVersions.add(minecraft_version)
+        javaVersions.add(JavaVersion.toVersion(java_version))
+        client = true
+        server = true
+    }
+}

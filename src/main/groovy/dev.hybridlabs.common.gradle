@@ -1,0 +1,39 @@
+// The common project: loader-independent code, compiled against vanilla Minecraft.
+plugins {
+    id 'dev.hybridlabs.base'
+}
+
+// 1.21 has NeoForm (neo_form_version); 1.20.1 only has MCP, which needs legacy Forge.
+if (hasProperty('neo_form_version')) {
+    pluginManager.apply('net.neoforged.moddev')
+    neoForge.neoFormVersion = neo_form_version
+} else {
+    pluginManager.apply('net.neoforged.moddev.legacyforge')
+    legacyForge.mcpVersion = minecraft_version
+}
+pluginManager.apply('dev.hybridlabs.moddev')
+
+// The sources and resources each loader compiles into its own jar.
+configurations {
+    commonJava {
+        canBeResolved = false
+    }
+    commonKotlin {
+        canBeResolved = false
+    }
+    commonResources {
+        canBeResolved = false
+    }
+}
+
+artifacts {
+    commonJava file('src/main/java')
+    commonKotlin file('src/main/kotlin')
+    commonResources file('src/main/resources')
+}
+
+dependencies {
+    compileOnly 'org.spongepowered:mixin:0.8.5'
+    compileOnly(annotationProcessor('io.github.llamalad7:mixinextras-common:0.5.0'))
+    compileOnly 'org.jetbrains:annotations:25.0.0'
+}
