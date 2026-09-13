@@ -132,6 +132,19 @@ tasks.named('processResources', ProcessResources) {
     }
 
     inputs.properties(expandProps)
+
+    // Forge 1.20.1 reads a dependency without a versionRange as one no version satisfies, so
+    // installing an optional dependency fails to load with "only supports <mod>". Require one.
+    doLast {
+        fileTree(destinationDir).matching { include 'META-INF/mods.toml', 'META-INF/neoforge.mods.toml' }.each { toml ->
+            toml.text.split(/(?m)^(?=\s*\[)/).each { table ->
+                if (!(table =~ /^\s*\[\[dependencies\./)) return
+                if (table =~ /(?m)^\s*versionRange\s*=/) return
+                def modId = (table =~ /(?m)^\s*modId\s*=\s*"([^"]*)"/).with { it.find() ? it.group(1) : '?' }
+                throw new GradleException("${toml.name}: dependency '$modId' has no versionRange, use \"[0,)\" to accept any version")
+            }
+        }
+    }
 }
 
 publishing {

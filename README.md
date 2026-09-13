@@ -27,7 +27,7 @@ pluginManagement {
 }
 
 plugins {
-    id 'dev.hybridlabs.multiloader' version '1.0.0'
+    id 'dev.hybridlabs.multiloader' version '1.0.1'
 }
 
 rootProject.name = 'hybrid-example'
@@ -74,6 +74,9 @@ fabricApi {
 
 Read from the mod's `gradle.properties`. Every key is also available as a placeholder in
 `fabric.mod.json`, the `mods.toml` and the mixin configs.
+
+Every `mods.toml` dependency needs a `versionRange`, `"[0,)"` for any version. Forge 1.20.1 reads a
+missing one as a range nothing satisfies, so the build fails without it.
 
 | Property | Used by |
 | --- | --- |
