@@ -27,7 +27,7 @@ pluginManagement {
 }
 
 plugins {
-    id 'dev.hybridlabs.multiloader' version '1.0.1'
+    id 'dev.hybridlabs.multiloader' version '1.0.2'
 }
 
 rootProject.name = 'hybrid-example'
@@ -89,6 +89,28 @@ missing one as a range nothing satisfies, so the build fails without it.
 | `neoforge_version`, `kotlin_for_forge_version` | `neoforge` |
 | `forge_version`, `kotlin_for_forge_version` | `forge` |
 | `modrinth_id`, `curseforge_id` | publishing |
+| `local_mods` | optional: see [Building a dependency from source](#building-a-dependency-from-source) |
+
+## Building a dependency from source
+
+A mod can build another of these mods from a checkout inside it, so a change to the dependency is
+tested without publishing it. Add the dependency as a git submodule, and list its directory in the
+mod's `gradle.properties`, separated by commas if there are several:
+
+```properties
+local_mods=hybrid-api
+```
+
+The dependencies stay declared by their published coordinates. The checkout replaces them whatever
+version they ask for, as an [included build](https://docs.gradle.org/current/userguide/composite_builds.html)
+with its own `gradle.properties`, so it has to use version 1.0.2 or newer of this plugin as well.
+
+A directory that holds no build is skipped and the published jars are used, which is what a clone
+without `--recurse-submodules` and the CI get. `git submodule update --init` checks the submodule
+out, `git submodule deinit <directory>` or `-Plocal_mods=` goes back to the published jars.
+
+On Fabric the checkout brings no dependencies of its own, so the mod has to declare the ones it
+compiles against.
 
 ## Publishing a mod
 

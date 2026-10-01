@@ -1,5 +1,7 @@
 // Entry point, applied in settings.gradle. Loading the plugins here puts Loom and ModDevGradle on
 // one classpath shared by every project, and lets projects apply the conventions without a version.
+import dev.hybridlabs.gradle.LocalMod
+
 plugins {
     // Downloads the JDK java_version asks for if it is not installed.
     id 'org.gradle.toolchains.foojay-resolver-convention'
@@ -10,5 +12,16 @@ plugins {
 pluginManagement.resolutionStrategy.eachPlugin {
     if (requested.id.id == 'org.jetbrains.kotlin.jvm' && requested.version == null) {
         useVersion(providers.gradleProperty('kotlin_version').get())
+    }
+}
+
+// A mod listed in local_mods is built from its checkout, which replaces its published jars.
+LocalMod.listedIn(providers.gradleProperty('local_mods').orNull, settingsDir).each { mod ->
+    includeBuild(mod.dir) {
+        dependencySubstitution {
+            ['common', 'fabric', 'forge', 'neoforge'].findAll { mod.has(it) }.each { loader ->
+                substitute module(mod.module(loader)) using project(":$loader")
+            }
+        }
     }
 }

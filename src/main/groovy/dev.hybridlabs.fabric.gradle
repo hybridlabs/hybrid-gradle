@@ -1,5 +1,7 @@
 // The Fabric project. Data generation stays in the project's own script, since Loom only allows
 // configuring it once.
+import dev.hybridlabs.gradle.LocalMod
+
 plugins {
     id 'dev.hybridlabs.loader'
     id 'fabric-loom'
@@ -39,6 +41,41 @@ loom {
         configureEach {
             // Loom only generates run configurations for the root project by default.
             ideConfigGenerated(true)
+        }
+    }
+}
+
+// The jar before remapping, in Mojang names, for a mod that builds this one from a checkout
+// (local_mods). Loom only offers it by configuration name, which an included build cannot ask for.
+configurations {
+    devElements {
+        canBeResolved = false
+        attributes {
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME))
+            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY))
+            attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.JAR))
+            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
+        }
+        outgoing.capability("$group:${base.archivesName.get()}-dev:$version")
+    }
+}
+
+artifacts {
+    devElements tasks.named('jar')
+}
+
+// A local mod is declared like a published one, but must skip Loom's remapping: it is already in
+// Mojang names, and Loom resolves the mod configurations before the checkout has built its jar.
+def localMods = LocalMod.listedIn(findProperty('local_mods'), rootDir).collect { it.module('fabric') }
+loom.remapConfigurations.configureEach { remap ->
+    def modDependencies = configurations.getByName(remap.name).dependencies
+    modDependencies.whenObjectAdded { dependency ->
+        if ("${dependency.group}:${dependency.name}".toString() in localMods) {
+            modDependencies.remove(dependency)
+            dependency.capabilities {
+                requireCapability "${dependency.group}:${dependency.name}-dev"
+            }
+            dependencies.add(remap.targetConfigurationName.get(), dependency)
         }
     }
 }
