@@ -4,27 +4,43 @@ import dev.hybridlabs.gradle.LocalMod
 
 plugins {
     id 'dev.hybridlabs.loader'
-    id 'fabric-loom'
 }
+
+// Loom ships both plugin ids in the one jar pinned here. Minecraft 26.1 and newer carries its
+// names in the jar and builds without remapping; the obfuscated versions before that keep the
+// remapping plugin.
+def noRemap = providers.gradleProperty('minecraft_version').get().tokenize('.')[0] as int >= 26
+pluginManager.apply(noRemap ? 'net.fabricmc.fabric-loom' : 'net.fabricmc.fabric-loom-remap')
 
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
-    mappings loom.layered {
-        officialMojangMappings()
-        // Optional: only layered on top when the mod asks for parchment_version.
-        if (findProperty('parchment_version')) {
-            parchment("org.parchmentmc.data:parchment-${findProperty('parchment_minecraft') ?: minecraft_version}:${parchment_version}@zip")
+
+    if (noRemap) {
+        implementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+        implementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+    } else {
+        mappings loom.layered {
+            officialMojangMappings()
+            // Optional: only layered on top when the mod asks for parchment_version.
+            if (findProperty('parchment_version')) {
+                parchment("org.parchmentmc.data:parchment-${findProperty('parchment_minecraft') ?: minecraft_version}:${parchment_version}@zip")
+            }
         }
+
+        modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+        modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
     }
 
-    modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
     compileOnly 'org.jetbrains:annotations:25.0.0'
 }
 
 pluginManager.withPlugin('org.jetbrains.kotlin.jvm') {
     dependencies {
-        modImplementation "net.fabricmc:fabric-language-kotlin:${fabric_kotlin_version}+kotlin.${kotlin_version}"
+        if (noRemap) {
+            implementation "net.fabricmc:fabric-language-kotlin:${fabric_kotlin_version}+kotlin.${kotlin_version}"
+        } else {
+            modImplementation "net.fabricmc:fabric-language-kotlin:${fabric_kotlin_version}+kotlin.${kotlin_version}"
+        }
     }
 }
 
@@ -48,41 +64,46 @@ loom {
     }
 }
 
-// The jar before remapping, in Mojang names, for a mod that builds this one from a checkout
-// (local_mods). Loom only offers it by configuration name, which an included build cannot ask for.
-configurations {
-    devElements {
-        canBeResolved = false
-        attributes {
-            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME))
-            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY))
-            attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.JAR))
-            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
-        }
-        outgoing.capability("$group:${base.archivesName.get()}-dev:$version")
-    }
-}
-
-artifacts {
-    devElements tasks.named('jar')
-}
-
-// A local mod is declared like a published one, but must skip Loom's remapping: it is already in
-// Mojang names, and Loom resolves the mod configurations before the checkout has built its jar.
-def localMods = LocalMod.listedIn(findProperty('local_mods'), rootDir).collect { it.module('fabric') }
-loom.remapConfigurations.configureEach { remap ->
-    def modDependencies = configurations.getByName(remap.name).dependencies
-    modDependencies.whenObjectAdded { dependency ->
-        if ("${dependency.group}:${dependency.name}".toString() in localMods) {
-            modDependencies.remove(dependency)
-            dependency.capabilities {
-                requireCapability "${dependency.group}:${dependency.name}-dev"
+if (!noRemap) {
+    // The jar before remapping, in Mojang names, for a mod that builds this one from a checkout
+    // (local_mods). Loom only offers it by configuration name, which an included build cannot ask
+    // for. Minecraft 26.1+ has no remap step, and its consumers just take the plain project output.
+    configurations {
+        devElements {
+            canBeResolved = false
+            attributes {
+                attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME))
+                attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY))
+                attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.JAR))
+                attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
             }
-            dependencies.add(remap.targetConfigurationName.get(), dependency)
+            outgoing.capability("$group:${base.archivesName.get()}-dev:$version")
+        }
+    }
+
+    artifacts {
+        devElements tasks.named('jar')
+    }
+
+    // A local mod is declared like a published one, but must skip Loom's remapping: it is already in
+    // Mojang names, and Loom resolves the mod configurations before the checkout has built its jar.
+    def localMods = LocalMod.listedIn(findProperty('local_mods'), rootDir).collect { it.module('fabric') }
+    loom.remapConfigurations.configureEach { remap ->
+        def modDependencies = configurations.getByName(remap.name).dependencies
+        modDependencies.whenObjectAdded { dependency ->
+            if ("${dependency.group}:${dependency.name}".toString() in localMods) {
+                modDependencies.remove(dependency)
+                dependency.capabilities {
+                    requireCapability "${dependency.group}:${dependency.name}-dev"
+                }
+                dependencies.add(remap.targetConfigurationName.get(), dependency)
+            }
         }
     }
 }
 
 publishMods {
-    file = tasks.named('remapJar').flatMap { it.archiveFile }
+    file = noRemap
+            ? tasks.named('jar', Jar).flatMap { it.archiveFile }
+            : tasks.named('remapJar').flatMap { it.archiveFile }
 }

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4+loom1.19.4+mdg2.0.148] 2026-11-11
+
+- Picked the Loom plugin by `minecraft_version`: 26.1 or newer builds without remapping through
+  `net.fabricmc.fabric-loom`, older obfuscated versions keep the remapping plugin, so 1.20.1 and
+  1.21.x mods build unchanged
+
 ## [1.0.3+loom1.19.4+mdg2.0.148] 2026-11-11
 
 - Pinned Loom 1.19.4 and ModDevGradle 2.0.148

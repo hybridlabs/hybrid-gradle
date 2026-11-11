@@ -7,7 +7,7 @@ its dependencies, its data generation settings and its Modrinth/CurseForge relat
 It also pins Loom, ModDevGradle and mod-publish-plugin, so updating them for every mod means
 releasing a new version of this plugin and bumping the version in each mod's `settings.gradle`.
 The release version carries the Loom and ModDevGradle pins as `+loom` / `+mdg` build metadata,
-e.g. `1.0.3+loom1.19.4+mdg2.0.148`.
+e.g. `1.0.4+loom1.19.4+mdg2.0.148`.
 
 Gradle has to run on Java 25 or newer, which Loom 1.19 asks for, whatever loader the mod builds
 for. Point Gradle at one with `org.gradle.java.home`, or the `java.toolchain` of the mod is a
@@ -33,7 +33,7 @@ pluginManagement {
 }
 
 plugins {
-    id 'dev.hybridlabs.multiloader' version '1.0.3+loom1.19.4+mdg2.0.148'
+    id 'dev.hybridlabs.multiloader' version '1.0.4+loom1.19.4+mdg2.0.148'
 }
 
 rootProject.name = 'hybrid-example'
@@ -58,7 +58,7 @@ plugins {
 | --- | --- | --- |
 | `dev.hybridlabs.multiloader` | `settings.gradle` | JDK provisioning, Kotlin version, the other plugins |
 | `dev.hybridlabs.common` | `common` | NeoForm (1.21) or MCP (1.20.1), mixin annotations, sources for the loaders |
-| `dev.hybridlabs.fabric` | `fabric` | Loom, Minecraft, mappings, Fabric API, runs |
+| `dev.hybridlabs.fabric` | `fabric` | Loom, picking its non-remapping plugin on Minecraft 26.1+ and the remapping one before, Minecraft, mappings, Fabric API, runs |
 | `dev.hybridlabs.neoforge` | `neoforge` | ModDevGradle, NeoForge, runs, Kotlin for Forge |
 | `dev.hybridlabs.forge` | `forge` | ModDevGradle legacy Forge, mixin refmap, MixinExtras, runs, Kotlin for Forge |
 
@@ -88,7 +88,7 @@ missing one as a range nothing satisfies, so the build fails without it.
 | --- | --- |
 | `mod_id`, `mod_name`, `mod_author`, `version`, `group` | all |
 | `minecraft_version`, `java_version` | all |
-| `parchment_version` | all, optional: without it, the official Mojang mappings are used alone |
+| `parchment_version` | all on Minecraft 1.21.11 or older; ignored on 26.1+. Optional: without it, the official Mojang mappings are used alone |
 | `parchment_minecraft` | with `parchment_version`, optional: defaults to `minecraft_version` |
 | `kotlin_version` | Kotlin |
 | `neo_form_version` | `common` on 1.21; without it, `common` uses legacy Forge |
@@ -110,7 +110,7 @@ local_mods=hybrid-api
 
 The dependencies stay declared by their published coordinates. The checkout replaces them whatever
 version they ask for, as an [included build](https://docs.gradle.org/current/userguide/composite_builds.html)
-with its own `gradle.properties`, so it has to use version 1.0.3 or newer of this plugin as well.
+with its own `gradle.properties`, so it has to use version 1.0.2 or newer of this plugin as well.
 
 A directory that holds no build is skipped and the published jars are used, which is what a clone
 without `--recurse-submodules` and the CI get. `git submodule update --init` checks the submodule
