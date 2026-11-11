@@ -4,8 +4,8 @@ plugins {
 }
 
 java {
-    // Loom needs Gradle to run on Java 21, so there is no point targeting anything older.
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    // Loom 1.19 needs Gradle to run on Java 25, so there is no point targeting anything older.
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
     withSourcesJar()
 }
 
@@ -17,10 +17,12 @@ repositories {
     }
 }
 
-// The plugins the conventions apply. Bumping one here and releasing updates every mod.
+// The plugins the conventions apply. Bumping one here and releasing updates every mod. The Loom
+// and ModDevGradle versions are also encoded in the project version, so a mod sees the pins in its
+// settings.gradle without reading this file.
 dependencies {
-    implementation 'net.fabricmc:fabric-loom:1.17.20'
-    implementation 'net.neoforged:moddev-gradle:2.0.147'
+    implementation 'net.fabricmc:fabric-loom:1.19.4'
+    implementation 'net.neoforged:moddev-gradle:2.0.148'
     implementation 'me.modmuss50:mod-publish-plugin:2.2.0'
     implementation 'org.gradle.toolchains:foojay-resolver:1.0.0'
 }

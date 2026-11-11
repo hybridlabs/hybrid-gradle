@@ -6,6 +6,12 @@ its dependencies, its data generation settings and its Modrinth/CurseForge relat
 
 It also pins Loom, ModDevGradle and mod-publish-plugin, so updating them for every mod means
 releasing a new version of this plugin and bumping the version in each mod's `settings.gradle`.
+The release version carries the Loom and ModDevGradle pins as `+loom` / `+mdg` build metadata,
+e.g. `1.0.3+loom1.19.4+mdg2.0.148`.
+
+Gradle has to run on Java 25 or newer, which Loom 1.19 asks for, whatever loader the mod builds
+for. Point Gradle at one with `org.gradle.java.home`, or the `java.toolchain` of the mod is a
+different thing and stays `java_version`.
 
 ## Usage
 
@@ -27,7 +33,7 @@ pluginManagement {
 }
 
 plugins {
-    id 'dev.hybridlabs.multiloader' version '1.0.2'
+    id 'dev.hybridlabs.multiloader' version '1.0.3+loom1.19.4+mdg2.0.148'
 }
 
 rootProject.name = 'hybrid-example'
@@ -81,8 +87,9 @@ missing one as a range nothing satisfies, so the build fails without it.
 | Property | Used by |
 | --- | --- |
 | `mod_id`, `mod_name`, `mod_author`, `version`, `group` | all |
-| `minecraft_version`, `java_version`, `parchment_version` | all |
-| `parchment_minecraft` | all, optional: defaults to `minecraft_version` |
+| `minecraft_version`, `java_version` | all |
+| `parchment_version` | all, optional: without it, the official Mojang mappings are used alone |
+| `parchment_minecraft` | with `parchment_version`, optional: defaults to `minecraft_version` |
 | `kotlin_version` | Kotlin |
 | `neo_form_version` | `common` on 1.21; without it, `common` uses legacy Forge |
 | `fabric_loader_version`, `fabric_version`, `fabric_kotlin_version` | `fabric` |
@@ -103,7 +110,7 @@ local_mods=hybrid-api
 
 The dependencies stay declared by their published coordinates. The checkout replaces them whatever
 version they ask for, as an [included build](https://docs.gradle.org/current/userguide/composite_builds.html)
-with its own `gradle.properties`, so it has to use version 1.0.2 or newer of this plugin as well.
+with its own `gradle.properties`, so it has to use version 1.0.3 or newer of this plugin as well.
 
 A directory that holds no build is skipped and the published jars are used, which is what a clone
 without `--recurse-submodules` and the CI get. `git submodule update --init` checks the submodule
@@ -131,7 +138,9 @@ Tokens are read from `modrinthToken` / `curseforgeToken` in `~/.gradle/gradle.pr
 
 ## Releasing this plugin
 
-1. Make the change, and bump `version` in `gradle.properties`.
+1. Make the change, bump `version` in `gradle.properties`, and when Loom or ModDevGradle moved,
+   update their versions both in the pins of `build.gradle` and in the `+loom` / `+mdg` metadata of
+   the version.
 2. Add a `## [<version>]` section to `CHANGELOG.md`.
 3. `./gradlew publish`. Credentials are `hybridlabsMavenUser` / `hybridlabsMavenPassword` in
    `~/.gradle/gradle.properties`, or `HYBRIDLABS_MAVEN_USER` / `HYBRIDLABS_MAVEN_PASSWORD`.

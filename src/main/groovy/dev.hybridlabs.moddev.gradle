@@ -2,9 +2,12 @@
 def neo = extensions.findByName('neoForge') != null
 def modDev = extensions.getByName(neo ? 'neoForge' : 'legacyForge')
 
-modDev.parchment {
-    minecraftVersion = findProperty('parchment_minecraft') ?: minecraft_version
-    mappingsVersion = parchment_version
+// Optional: only layered on top when the mod asks for parchment_version.
+if (findProperty('parchment_version')) {
+    modDev.parchment {
+        minecraftVersion = findProperty('parchment_minecraft') ?: minecraft_version
+        mappingsVersion = parchment_version
+    }
 }
 
 def accessTransformer = rootProject.file('common/src/main/resources/META-INF/accesstransformer.cfg')

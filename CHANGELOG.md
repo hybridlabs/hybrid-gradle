@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3+loom1.19.4+mdg2.0.148] 2026-11-11
+
+- Pinned Loom 1.19.4 and ModDevGradle 2.0.148
+- Gradle now has to run on Java 25 or newer, which Loom 1.19 asks for, whatever loader the mod
+  builds for; the Gradle wrapper was raised to 9.9.1, which Loom 1.19 requires
+- Made `parchment_version` optional: without it the official Mojang mappings are used alone
+- Encoded the Loom and ModDevGradle versions in the release version, as `+loom` and `+mdg` build
+  metadata, so a mod sees what is pinned in its `settings.gradle`
+
 ## [1.0.2] 2026-10-02
 
 - Added the `local_mods` property, which builds a mod from a checkout such as a git submodule in
